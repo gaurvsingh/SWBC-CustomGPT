@@ -1,0 +1,131 @@
+<!-- templates/index.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>SWBC RFP Assistant — Draft + QA</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <style>
+    :root{--bg:#0b1220;--card:#121a2b;--muted:#91a1c3;--accent:#47a3ff;--ok:#3ecf8e;--warn:#ffd166}
+    body{margin:0;background:linear-gradient(180deg,#0b1220,#0b1220 60%,#0e1627);color:#e7ecf6;font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+    .wrap{max-width:1100px;margin:40px auto;padding:0 20px}
+    h1{font-weight:700;letter-spacing:.3px;margin:0 0 16px}
+    .sub{color:var(--muted);margin:6px 0 24px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+    .card{background:var(--card);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:18px}
+    .card h2{margin:0 0 10px;font-size:18px}
+    .btn{background:var(--accent);border:none;color:#001b33;padding:10px 14px;border-radius:10px;font-weight:600;cursor:pointer}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    input[type=file]{background:#0b1220;border:1px solid #233252;color:#cfe3ff;padding:10px;border-radius:10px;width:100%}
+    .log{background:#0b1220;border:1px dashed #2a3a57;border-radius:12px;padding:12px;height:180px;overflow:auto;font-family:ui-monospace,Menlo,Consolas,monospace;color:#b9c9e6;font-size:13px}
+    .answers{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .ans{background:#0b1220;border:1px solid #203050;border-radius:12px;padding:12px}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:999px;font-size:12px;font-weight:700}
+    .ok{background:rgba(62,207,142,.15);color:#8ff3c5}
+    .warn{background:rgba(255,209,102,.15);color:#ffe29c}
+    a.download{color:#cfe3ff;text-decoration:none;border:1px solid #2b3c5c;padding:9px 12px;border-radius:10px}
+    .mt{margin-top:14px}
+    .small{font-size:12px;color:#a7b7d8}
+    .hl{color:#9dd1ff}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>SWBC RFP Assistant — Draft + QA</h1>
+    <div class="sub">Upload an <span class="hl">optional reference RFQ</span> to seed the library, then upload the <span class="hl">RFP</span> you want answered. The app retrieves context (reference-first), drafts answers, runs answer-time QA, and exports a DOCX.</div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Step 1 — (Optional) Ingest Reference RFQ</h2>
+        <input id="refFile" type="file" accept=".pdf,.docx,.txt"/>
+        <div class="row mt">
+          <button class="btn" id="btnIngest">Ingest with reference boost</button>
+          <span class="small">Boosted docs help set tone & structure.</span>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Step 2 — Upload RFP to Answer</h2>
+        <input id="rfpFile" type="file" accept=".pdf,.docx,.txt"/>
+        <div class="row mt">
+          <button class="btn" id="btnRun">Generate Draft + QA</button>
+          <a id="btnDownload" class="download" style="display:none" href="#">Download DOCX</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:18px">
+      <div class="card">
+        <h2>Progress</h2>
+        <div id="log" class="log"></div>
+      </div>
+      <div class="card">
+        <h2>Answers (Preview)</h2>
+        <div id="answers" class="answers"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const logEl = document.getElementById('log');
+    const answersEl = document.getElementById('answers');
+    const btnDownload = document.getElementById('btnDownload');
+
+    function log(msg){ logEl.innerText += msg + "\\n"; logEl.scrollTop = logEl.scrollHeight; }
+    function card(answer){
+      const qa = answer.qa || {};
+      const status = qa.status === 'pass' ? 'ok' : 'warn';
+      const badge = qa.status === 'pass' ? 'OK' : 'Needs Review';
+      const color = status === 'ok' ? 'ok' : 'warn';
+      const html = `
+        <div class="ans">
+          <div class="badge ${color}">${badge}</div>
+          <div class="small mt"><strong>Q:</strong> ${escapeHtml(answer.question)}</div>
+          <div class="small mt"><strong>A:</strong><br>${renderText(qa.answer_effective || answer.draft.answer || '')}</div>
+        </div>`;
+      const div = document.createElement('div'); div.innerHTML = html; return div.firstElementChild;
+    }
+    function renderText(t){ return escapeHtml(t).replace(/\\n\\n/g,'<br><br>').replace(/\\n/g,'<br>'); }
+    function escapeHtml(s){ return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])); }
+
+    async function ingestReference(){
+      const f = document.getElementById('refFile').files[0];
+      if(!f){ log('No reference selected.'); return; }
+      const fd = new FormData();
+      fd.append('file', f);
+      fd.append('reference', 'true');
+      log('Uploading reference…');
+      const res = await fetch('/ingest/upload?reference=true', { method:'POST', body: fd });
+      const j = await res.json();
+      if(!res.ok){ log('Error: '+JSON.stringify(j)); return; }
+      log(`Reference ingested: doc_id=${j.doc_id}, chunks=${j.chunks}, reference=${j.reference}`);
+      alert('Reference ingested and boosted ✔');
+    }
+
+    async function runRfp(){
+      const f = document.getElementById('rfpFile').files[0];
+      if(!f){ alert('Please select an RFP to upload.'); return; }
+      const fd = new FormData(); fd.append('rfp', f);
+      log('Uploading RFP & running Draft + QA…');
+      answersEl.innerHTML = ''; btnDownload.style.display='none';
+
+      const res = await fetch('/rfp/complete', { method:'POST', body: fd });
+      const j = await res.json();
+      if(!res.ok){ log('Error: '+JSON.stringify(j)); return; }
+
+      log(`Parsed ${j.count_questions} question(s). Building DOCX…`);
+      if(j.answers && j.answers.length){
+        j.answers.forEach(a => answersEl.appendChild(card(a)));
+      }
+      if(j.download_uri){
+        btnDownload.href = j.download_uri;
+        btnDownload.style.display = 'inline-block';
+        log('Ready → Download DOCX.');
+      }
+    }
+
+    document.getElementById('btnIngest').onclick = ingestReference;
+    document.getElementById('btnRun').onclick = runRfp;
+  </script>
+</body>
+</html>

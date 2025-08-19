@@ -1,0 +1,8 @@
+body { font-family: Arial, sans-serif; display: flex; flex-direction: column; height: 100vh; margin: 0; }
+#chat-container { flex: 1; padding: 1rem; overflow-y: auto; background: #f5f5f5; }
+.message { margin: 0.5rem 0; }
+.user { text-align: right; color: #1a73e8; }
+.assistant { text-align: left; color: #0f9d58; }
+#input-container { display: flex; border-top: 1px solid #ccc; }
+#input { flex: 1; padding: 0.5rem; border: none; }
+#send { padding: 0.5rem 1rem; border: none; background: #1a73e8; color: white; cursor: pointer; }

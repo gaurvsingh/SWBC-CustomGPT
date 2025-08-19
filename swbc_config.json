@@ -1,0 +1,45 @@
+{
+  "swbc-rfp-assistant": {
+    "reference_profile": {
+      "id": "C2-RFQ-2025",
+      "reference_doc_ids": ["RFQ_C2.pdf"],
+      "retrieval_bias": {
+        "boost_if_reference": 1.25,
+        "max_chunks": 8,
+        "min_citations": 2
+      },
+      "style_profile": {
+        "tone": "confident, formal, client-centric; avoid superlatives unless cited",
+        "headings": "use clear section labels; preserve numbering when the RFP asks (e.g., 5.1, 5.2)",
+        "bullets": "short, action-focused; avoid run-on sentences",
+        "tables": "use when listing carriers, pricing models, or team roles",
+        "branding": { "org_name": "SWBC Insurance Services" }
+      },
+      "content_pillars": [
+        "Company overview & leadership presence",
+        "Proposed work plan (R.I.S.E-like sequence: identify → strategize → execute → evaluate)",
+        "Administrative support model (producer, account manager, claims, loss control)",
+        "Pricing options (commission vs fee, hybrid/offset)",
+        "Carrier relationships and market leverage",
+        "Team bios & roles; references/past performance"
+      ],
+      "qa_acceptance": {
+        "validation": [
+          "Directly answers the question and mirrors the RFP’s grouping/ordering",
+          "Grounded in cited chunks from the reference or library (no uncited claims)"
+        ],
+        "privacy": [
+          "Redact PII/secrets in the ANSWER TEXT ONLY using <REDACTED_*> tokens"
+        ],
+        "compliance": [
+          "If security/compliance topics present, align phrasing with SOC2/ISO27001/GDPR/HIPAA/DORA; include control IDs if cited"
+        ],
+        "formatting": [
+          "Use concise bullets for lists; tables for carriers/pricing; avoid marketing fluff"
+        ]
+      }
+    },
+
+    "system_prompt_append": "REFERENCE STANDARD:\\nUse the profile 'C2-RFQ-2025' as the style and content reference when drafting or QA'ing answers. Prioritize context chunks tagged as reference:true from RFQ_C2.pdf for similar topics (company overview, work plan, admin support, pricing models, carriers, team bios). Mirror the formatting style (clear headings, concise bullets, tables where appropriate). Do not quote long passages verbatim—paraphrase while keeping cited facts accurate.\\n\\nDRAFTING: If the question maps to any content_pillars, prefer those chunks first; include at least two citations.\\nQA: Enforce qa_acceptance rules. If a claim is not present in the cited chunks, mark fail and propose a compliant fix or request more context."
+  }
+}
